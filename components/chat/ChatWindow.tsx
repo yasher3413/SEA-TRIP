@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ChatMessage } from "@/lib/types";
@@ -23,9 +23,30 @@ export default function ChatWindow() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Accumulate streamed text between rAF flushes to avoid per-chunk re-renders
+  const pendingTextRef = useRef("");
+  const rafRef = useRef<number | null>(null);
+  const activeIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
+
+  // Flush pending text to state at display framerate
+  const scheduleFlush = useCallback((msgId: string) => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const text = pendingTextRef.current;
+      if (!text) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgId ? { ...m, content: m.content + text } : m
+        )
+      );
+      pendingTextRef.current = "";
+    });
+  }, []);
 
   async function sendMessage(text: string) {
     if (!text.trim() || isStreaming) return;
@@ -44,17 +65,26 @@ export default function ChatWindow() {
       timestamp: new Date(),
     };
 
+    activeIdRef.current = assistantMsg.id;
+    pendingTextRef.current = "";
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
     const updatedMessages = [...messages, userMsg];
     setMessages([...updatedMessages, assistantMsg]);
     setInput("");
     setIsStreaming(true);
     setIsToolCalling(false);
 
-    // Build history for API (exclude the empty assistant placeholder)
     const apiHistory = updatedMessages.map((m) => ({
       role: m.role,
       content: m.content,
     }));
+
+    // Track total accumulated text for citation parsing at done
+    let totalAccumulated = "";
 
     try {
       const res = await fetch("/api/chat", {
@@ -68,7 +98,6 @@ export default function ChatWindow() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let accumulated = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -84,26 +113,40 @@ export default function ChatWindow() {
             const event = JSON.parse(line.slice(6));
 
             if (event.type === "tool_call") {
+              // Flush any pending text before showing the tool-call indicator
+              if (pendingTextRef.current) {
+                const flushed = pendingTextRef.current;
+                pendingTextRef.current = "";
+                totalAccumulated += flushed;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMsg.id ? { ...m, content: totalAccumulated } : m
+                  )
+                );
+              }
               setIsToolCalling(true);
             } else if (event.type === "text") {
               setIsToolCalling(false);
-              accumulated += event.text;
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsg.id
-                    ? { ...m, content: accumulated }
-                    : m
-                )
-              );
+              pendingTextRef.current += event.text;
+              totalAccumulated += event.text;
+              scheduleFlush(assistantMsg.id);
             } else if (event.type === "done") {
-              // Parse citations from [src: ...] tags
-              const citations: string[] = [];
+              // Cancel any pending rAF and do a final synchronous flush
+              if (rafRef.current !== null) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
+              }
+              pendingTextRef.current = "";
+
+              // Strip citation tags and attach them as chips
               const citationRegex = /\[src:\s*([^\]]+)\]/gi;
+              const citations: string[] = [];
               let match;
-              while ((match = citationRegex.exec(accumulated)) !== null) {
+              while ((match = citationRegex.exec(totalAccumulated)) !== null) {
                 citations.push(match[1].trim());
               }
-              const cleanContent = accumulated.replace(citationRegex, "").trim();
+              const cleanContent = totalAccumulated.replace(citationRegex, "").trim();
+
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantMsg.id
@@ -112,21 +155,29 @@ export default function ChatWindow() {
                 )
               );
             } else if (event.type === "error") {
+              if (rafRef.current !== null) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
+              }
+              pendingTextRef.current = "";
               setMessages((prev) =>
                 prev.map((m) =>
-                  m.id === assistantMsg.id
-                    ? { ...m, content: event.message }
-                    : m
+                  m.id === assistantMsg.id ? { ...m, content: event.message } : m
                 )
               );
             }
           } catch {
-            // malformed JSON line — skip
+            // malformed SSE line — skip
           }
         }
       }
     } catch (err) {
       console.error(err);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      pendingTextRef.current = "";
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMsg.id
@@ -137,6 +188,7 @@ export default function ChatWindow() {
     } finally {
       setIsStreaming(false);
       setIsToolCalling(false);
+      activeIdRef.current = null;
     }
   }
 
@@ -147,10 +199,15 @@ export default function ChatWindow() {
     }
   }
 
-  return (
-    <div className="flex flex-col h-[600px] md:h-[660px] rounded-3xl overflow-hidden shadow-lg border"
-      style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+  // Show typing indicator only while waiting for the first token (content still empty)
+  const lastMsg = messages[messages.length - 1];
+  const showTyping = isStreaming && lastMsg?.content === "";
 
+  return (
+    <div
+      className="flex flex-col h-[600px] md:h-[660px] rounded-3xl overflow-hidden shadow-lg border"
+      style={{ background: "var(--card)", borderColor: "var(--border)" }}
+    >
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
@@ -166,17 +223,17 @@ export default function ChatWindow() {
           ))}
         </AnimatePresence>
 
-        {isStreaming && messages[messages.length - 1]?.content === "" && (
-          <TypingIndicator isSearching={isToolCalling} />
-        )}
+        {showTyping && <TypingIndicator isSearching={isToolCalling} />}
 
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
+      {/* Input row */}
       <div className="p-3 border-t" style={{ borderColor: "var(--border)" }}>
-        <div className="flex items-end gap-2 rounded-2xl px-3 py-2 border"
-          style={{ background: "var(--cream)", borderColor: "var(--border)" }}>
+        <div
+          className="flex items-end gap-2 rounded-2xl px-3 py-2 border"
+          style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+        >
           <textarea
             ref={inputRef}
             value={input}
@@ -185,7 +242,7 @@ export default function ChatWindow() {
             placeholder="Ask anything about Yash's trip…"
             rows={1}
             className="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-gray-400 max-h-32"
-            style={{ color: "var(--foreground)", fontFamily: "var(--font-sans)" }}
+            style={{ color: "var(--foreground)" }}
             disabled={isStreaming}
           />
           <button

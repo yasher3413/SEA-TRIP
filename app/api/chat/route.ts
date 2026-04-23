@@ -8,6 +8,7 @@ import flights from "@/data/flights.json";
 import hostels from "@/data/hostels.json";
 import expenses from "@/data/expenses.json";
 import quickref from "@/data/quickref.json";
+import type Anthropic from "@anthropic-ai/sdk";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -45,7 +46,7 @@ IMPORTANT RULES:
 1. Always prefer the trip data below over any assumptions.
 2. If you use info from the trip data, end that sentence or paragraph with a citation tag like [src: itinerary] or [src: flights] etc.
 3. If the question can't be answered from trip data (weather, safety, news, restaurant recs), call the exa_search tool — never refuse or say "I don't know" before searching.
-4. Keep responses concise and scannable. Use bullet points for lists.
+4. Keep responses concise and scannable. Use bullet points for lists. Use markdown tables when showing tabular data (like expenses by category).
 5. If asked about safety, health, or emergencies, be helpful and factual.
 
 === TRIP DATA ===
@@ -70,12 +71,12 @@ ${JSON.stringify(META, null, 2)}
 `;
 }
 
-const EXA_TOOL = {
+const EXA_TOOL: Anthropic.Tool = {
   name: "exa_search",
   description:
     "Search the web for live information — use for weather, safety advisories, current events, restaurant recommendations, or anything not covered by the trip data.",
   input_schema: {
-    type: "object" as const,
+    type: "object",
     properties: {
       query: {
         type: "string",
@@ -91,89 +92,87 @@ export async function POST(req: NextRequest) {
 
   const client = getAnthropicClient();
   const systemPrompt = buildSystemPrompt();
-
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
+      const send = (obj: object) =>
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+
       try {
-        // Agentic loop: keep going while model wants to use tools
-        let currentMessages = messages;
-        let continueLoop = true;
+        let currentMessages: Anthropic.MessageParam[] = messages;
 
-        while (continueLoop) {
-          continueLoop = false;
-
+        // Agentic loop — resolve all tool calls before streaming the final response
+        while (true) {
+          // Non-streaming call to detect/handle tool use
           const response = await client.messages.create({
             model: "claude-sonnet-4-6",
-            max_tokens: 1024,
+            max_tokens: 2048,
             system: systemPrompt,
             tools: [EXA_TOOL],
             messages: currentMessages,
-            stream: false, // We stream manually below after tool resolution
           });
 
-          // Check if we need to handle tool use
           if (response.stop_reason === "tool_use") {
+            // Handle every tool call in this turn
             const toolUseBlocks = response.content.filter((b) => b.type === "tool_use");
-            const toolResults = [];
+            const toolResults: Anthropic.ToolResultBlockParam[] = [];
 
             for (const block of toolUseBlocks) {
               if (block.type !== "tool_use") continue;
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "tool_call", tool: block.name })}\n\n`));
+              send({ type: "tool_call", tool: block.name });
 
               let resultText = "";
               if (block.name === "exa_search") {
                 const input = block.input as { query: string };
                 const results = await exaSearch(input.query, 5);
-                if (results.length === 0) {
-                  resultText = "No results found. Please answer from trip data only and mention that live search returned no results.";
-                } else {
-                  resultText = results
-                    .map((r, i) => `[${i + 1}] ${r.title}\n${r.url}\n${r.text}`)
-                    .join("\n\n---\n\n");
-                }
+                resultText = results.length === 0
+                  ? "No results found. Answer from trip data only and mention that live search returned no results."
+                  : results.map((r, i) => `[${i + 1}] ${r.title}\n${r.url}\n${r.text}`).join("\n\n---\n\n");
               }
 
               toolResults.push({
-                type: "tool_result" as const,
+                type: "tool_result",
                 tool_use_id: block.id,
                 content: resultText,
               });
             }
 
-            // Append assistant turn + tool results and loop
+            // Append assistant + tool results and continue loop
             currentMessages = [
               ...currentMessages,
               { role: "assistant", content: response.content },
               { role: "user", content: toolResults },
             ];
-            continueLoop = true;
-          } else {
-            // Final response — stream it character by character
-            const textBlocks = response.content.filter((b) => b.type === "text");
-            for (const block of textBlocks) {
-              if (block.type !== "text") continue;
-              // Stream in small chunks for typing effect
-              const text = block.text;
-              const chunkSize = 4;
-              for (let i = 0; i < text.length; i += chunkSize) {
-                const chunk = text.slice(i, i + chunkSize);
-                controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ type: "text", text: chunk })}\n\n`)
-                );
-              }
-            }
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
+            continue;
           }
+
+          // No more tool use — stream the final answer word-by-word
+          const streamResponse = await client.messages.create({
+            model: "claude-sonnet-4-6",
+            max_tokens: 2048,
+            system: systemPrompt,
+            tools: [EXA_TOOL],
+            tool_choice: { type: "none" }, // No tools on final pass
+            messages: currentMessages,
+            stream: true,
+          });
+
+          for await (const event of streamResponse) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              send({ type: "text", text: event.delta.text });
+            }
+          }
+
+          send({ type: "done" });
+          break;
         }
       } catch (err) {
         console.error("Chat API error:", err);
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: "error", message: "Something went wrong. Please try again in a moment." })}\n\n`
-          )
-        );
+        send({ type: "error", message: "Something went wrong. Please try again in a moment." });
       } finally {
         controller.close();
       }
