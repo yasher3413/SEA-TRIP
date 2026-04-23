@@ -2,13 +2,13 @@ import { NextRequest } from "next/server";
 import { getAnthropicClient } from "@/lib/anthropic";
 import { exaSearch } from "@/lib/exa";
 import { getCurrentDayInfo, getCityForDate, getNextFlight, totalSpentCAD, META } from "@/lib/trip";
+import type Anthropic from "@anthropic-ai/sdk";
 
 import itinerary from "@/data/itinerary.json";
 import flights from "@/data/flights.json";
 import hostels from "@/data/hostels.json";
 import expenses from "@/data/expenses.json";
 import quickref from "@/data/quickref.json";
-import type Anthropic from "@anthropic-ai/sdk";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -30,7 +30,9 @@ function buildSystemPrompt(): string {
   }
 
   const nextFlightLine = nextFlight
-    ? `Next upcoming flight: ${nextFlight.flight.route} on ${nextFlight.flight.date} (${nextFlight.daysAway === 0 ? "TODAY" : `in ${nextFlight.daysAway} day(s)`}).`
+    ? `Next upcoming flight: ${nextFlight.flight.route} on ${nextFlight.flight.date} (${
+        nextFlight.daysAway === 0 ? "TODAY" : `in ${nextFlight.daysAway} day(s)`
+      }).`
     : "No more flights remaining.";
 
   return `You are Yash's friendly travel assistant. His parents (and anyone who visits this site) use you to ask about his 29-day Southeast Asia backpacking trip.
@@ -74,13 +76,13 @@ ${JSON.stringify(META, null, 2)}
 const EXA_TOOL: Anthropic.Tool = {
   name: "exa_search",
   description:
-    "Search the web for live information — use for weather, safety advisories, current events, restaurant recommendations, or anything not covered by the trip data.",
+    "Search the web for live information — weather, safety advisories, current events, restaurant recs, or anything not in the trip data.",
   input_schema: {
     type: "object",
     properties: {
       query: {
         type: "string",
-        description: "The search query. Be specific (e.g. 'current weather Hanoi Vietnam May 2026').",
+        description: "Specific search query, e.g. 'current weather Hanoi Vietnam May 2026'.",
       },
     },
     required: ["query"],
@@ -89,7 +91,6 @@ const EXA_TOOL: Anthropic.Tool = {
 
 export async function POST(req: NextRequest) {
   const { messages } = await req.json();
-
   const client = getAnthropicClient();
   const systemPrompt = buildSystemPrompt();
   const encoder = new TextEncoder();
@@ -102,77 +103,114 @@ export async function POST(req: NextRequest) {
       try {
         let currentMessages: Anthropic.MessageParam[] = messages;
 
-        // Agentic loop — resolve all tool calls before streaming the final response
+        // Agentic streaming loop.
+        // We stream from the very first call so text tokens reach the client immediately.
+        // If the model calls a tool we pause, resolve it, and continue streaming.
         while (true) {
-          // Non-streaming call to detect/handle tool use
+          // Buffers to reconstruct the assistant turn for the message history
+          let assistantText = "";
+          const toolUseBlocks: Array<{ id: string; name: string; inputJson: string }> = [];
+          let activeToolUse: { id: string; name: string; inputJson: string } | null = null;
+          let stopReason = "end_turn";
+
           const response = await client.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 2048,
             system: systemPrompt,
             tools: [EXA_TOOL],
             messages: currentMessages,
-          });
-
-          if (response.stop_reason === "tool_use") {
-            // Handle every tool call in this turn
-            const toolUseBlocks = response.content.filter((b) => b.type === "tool_use");
-            const toolResults: Anthropic.ToolResultBlockParam[] = [];
-
-            for (const block of toolUseBlocks) {
-              if (block.type !== "tool_use") continue;
-              send({ type: "tool_call", tool: block.name });
-
-              let resultText = "";
-              if (block.name === "exa_search") {
-                const input = block.input as { query: string };
-                const results = await exaSearch(input.query, 5);
-                resultText = results.length === 0
-                  ? "No results found. Answer from trip data only and mention that live search returned no results."
-                  : results.map((r, i) => `[${i + 1}] ${r.title}\n${r.url}\n${r.text}`).join("\n\n---\n\n");
-              }
-
-              toolResults.push({
-                type: "tool_result",
-                tool_use_id: block.id,
-                content: resultText,
-              });
-            }
-
-            // Append assistant + tool results and continue loop
-            currentMessages = [
-              ...currentMessages,
-              { role: "assistant", content: response.content },
-              { role: "user", content: toolResults },
-            ];
-            continue;
-          }
-
-          // No more tool use — stream the final answer word-by-word
-          const streamResponse = await client.messages.create({
-            model: "claude-sonnet-4-6",
-            max_tokens: 2048,
-            system: systemPrompt,
-            tools: [EXA_TOOL],
-            tool_choice: { type: "none" }, // No tools on final pass
-            messages: currentMessages,
             stream: true,
           });
 
-          for await (const event of streamResponse) {
-            if (
-              event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
-            ) {
-              send({ type: "text", text: event.delta.text });
+          for await (const event of response) {
+            switch (event.type) {
+              case "content_block_start":
+                if (event.content_block.type === "tool_use") {
+                  send({ type: "tool_call", tool: event.content_block.name });
+                  activeToolUse = {
+                    id: event.content_block.id,
+                    name: event.content_block.name,
+                    inputJson: "",
+                  };
+                }
+                break;
+
+              case "content_block_delta":
+                if (event.delta.type === "text_delta") {
+                  send({ type: "text", text: event.delta.text });
+                  assistantText += event.delta.text;
+                } else if (
+                  event.delta.type === "input_json_delta" &&
+                  activeToolUse
+                ) {
+                  activeToolUse.inputJson += event.delta.partial_json;
+                }
+                break;
+
+              case "content_block_stop":
+                if (activeToolUse) {
+                  toolUseBlocks.push(activeToolUse);
+                  activeToolUse = null;
+                }
+                break;
+
+              case "message_delta":
+                stopReason = event.delta.stop_reason ?? "end_turn";
+                break;
             }
           }
 
-          send({ type: "done" });
-          break;
+          // No tool use — final answer is already streamed
+          if (stopReason !== "tool_use") {
+            send({ type: "done" });
+            break;
+          }
+
+          // Resolve tool calls
+          const toolResults: Anthropic.ToolResultBlockParam[] = [];
+          for (const toolUse of toolUseBlocks) {
+            let resultText = "";
+            if (toolUse.name === "exa_search") {
+              const input = JSON.parse(toolUse.inputJson || "{}") as { query: string };
+              const results = await exaSearch(input.query, 5);
+              resultText =
+                results.length === 0
+                  ? "No results found. Answer from trip data only and note that live search returned nothing."
+                  : results
+                      .map((r, i) => `[${i + 1}] ${r.title}\n${r.url}\n${r.text}`)
+                      .join("\n\n---\n\n");
+            }
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: toolUse.id,
+              content: resultText,
+            });
+          }
+
+          // Reconstruct assistant content block for history
+          const assistantContent: Anthropic.ContentBlockParam[] = [
+            ...(assistantText ? [{ type: "text" as const, text: assistantText }] : []),
+            ...toolUseBlocks.map((t) => ({
+              type: "tool_use" as const,
+              id: t.id,
+              name: t.name,
+              input: JSON.parse(t.inputJson || "{}") as Record<string, unknown>,
+            })),
+          ];
+
+          currentMessages = [
+            ...currentMessages,
+            { role: "assistant", content: assistantContent },
+            { role: "user", content: toolResults },
+          ];
+          // Loop continues — next iteration streams the final answer
         }
       } catch (err) {
         console.error("Chat API error:", err);
-        send({ type: "error", message: "Something went wrong. Please try again in a moment." });
+        send({
+          type: "error",
+          message: "Something went wrong. Please try again in a moment.",
+        });
       } finally {
         controller.close();
       }

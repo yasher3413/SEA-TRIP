@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ThemeToggle from "./ThemeToggle";
 
 const NAV_LINKS = [
   { href: "/", label: "Chat", emoji: "💬" },
@@ -25,14 +26,18 @@ export default function NavBar() {
     <nav
       className="fixed top-0 left-0 right-0 z-50 border-b"
       style={{
-        background: "rgba(250,247,242,0.95)",
+        background: "color-mix(in srgb, var(--background) 92%, transparent)",
         backdropFilter: "blur(12px)",
         borderColor: "var(--border)",
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-semibold text-base" style={{ color: "var(--teal)" }}>
+        <Link
+          href="/"
+          className="flex items-center gap-2 font-semibold text-base shrink-0"
+          style={{ color: "var(--teal)" }}
+        >
           <Globe size={20} />
           <span className="hidden sm:inline" style={{ fontFamily: "var(--font-accent)" }}>
             Yash&apos;s SEA Trip
@@ -41,16 +46,14 @@ export default function NavBar() {
         </Link>
 
         {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
                 "px-3 py-1.5 rounded-xl text-sm font-medium transition-colors",
-                pathname === link.href
-                  ? "text-white"
-                  : "hover:bg-black/5"
+                pathname === link.href ? "text-white" : "hover:bg-black/5"
               )}
               style={
                 pathname === link.href
@@ -63,14 +66,17 @@ export default function NavBar() {
           ))}
         </div>
 
-        {/* Mobile hamburger */}
-        <button
-          className="md:hidden p-2 rounded-lg"
-          onClick={() => setOpen(!open)}
-          aria-label="Toggle menu"
-        >
-          {open ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        {/* Right side: theme toggle + mobile hamburger */}
+        <div className="flex items-center gap-1 shrink-0">
+          <ThemeToggle />
+          <button
+            className="md:hidden p-2 rounded-lg"
+            onClick={() => setOpen(!open)}
+            aria-label="Toggle menu"
+          >
+            {open ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}

@@ -34,10 +34,23 @@
   --font-accent: "Kalam", cursive;
 }
 
+/* Dark mode overrides — toggled by adding data-theme="dark" to <html> */
+[data-theme="dark"] {
+  --background: #171512;
+  --foreground: #F0EBE3;
+  --card: #211E1A;
+  --card-foreground: #F0EBE3;
+  --cream: #211E1A;
+  --cream-dark: #2A2520;
+  --muted: #9CA3AF;
+  --border: #3A342D;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Inter", sans-serif;
+  transition: background 0.2s, color 0.2s;
 }
 
 /* Leaflet z-index fix */
