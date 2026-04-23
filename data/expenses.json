@@ -1,0 +1,30 @@
+{
+  "budgetTargets": {
+    "Flight": null,
+    "Accommodation": 700,
+    "Food": 400,
+    "Transport": 150,
+    "Activity": 200,
+    "Other": 100
+  },
+  "preBookedFlights": [
+    {"date":"2026-04-23","description":"YYZ→TPE (AC739 + BR007) — Aeroplan pts + fees","category":"Flight","currency":"CAD","amountLocal":"51,900 pts","amountCAD":152.50},
+    {"date":"2026-05-01","description":"TPE→HAN (VJ943 VietJet)","category":"Flight","currency":"TWD","amountLocal":4490,"amountCAD":195.64},
+    {"date":"2026-05-09","description":"HAN→DAD (VJ503 VietJet)","category":"Flight","currency":"USD","amountLocal":78.39,"amountCAD":108.00},
+    {"date":"2026-05-13","description":"DAD→SGN (QH151 Bamboo Airways)","category":"Flight","currency":"VND","amountLocal":1436000,"amountCAD":85.00},
+    {"date":"2026-05-15","description":"SGN→KUL (VJ811 VietJet)","category":"Flight","currency":"USD","amountLocal":117.19,"amountCAD":161.00},
+    {"date":"2026-05-20","description":"SIN→YYZ (UA28 + UA436 United)","category":"Flight","currency":"USD","amountLocal":622,"amountCAD":855.00}
+  ],
+  "log": [
+    {"date":"2026-04-23","description":"MEANDER Taipei (3 nights) — 6 Bed Mixed Dorm","category":"Accommodation","currency":"CAD","amountLocal":177.71,"amountCAD":177.71},
+    {"date":"2026-04-26","description":"MEANDER Taipei (1 night) — 6 Bed Mixed Dorm","category":"Accommodation","currency":"CAD","amountLocal":31.25,"amountCAD":31.25},
+    {"date":"2026-04-27","description":"D'well Hostel Kaohsiung (3 nights) — 8 Bed Mixed Dorm","category":"Accommodation","currency":"CAD","amountLocal":54.69,"amountCAD":54.69},
+    {"date":"2026-04-30","description":"Mad Monkey Hanoi (3 nights) — Superior 8 Bed Mixed Dorm Ensuite","category":"Accommodation","currency":"CAD","amountLocal":57.18,"amountCAD":57.18},
+    {"date":"2026-05-07","description":"Hanoi Backpackers Hostel & Rooftop Bar (1 night) — Deluxe 8 Bed Mixed Dorm Ensuite","category":"Accommodation","currency":"CAD","amountLocal":13.66,"amountCAD":13.66},
+    {"date":"2026-05-08","description":"Mad Monkey Hoi An (2 nights) — 12 Bed Mixed Dorm","category":"Accommodation","currency":"CAD","amountLocal":31.45,"amountCAD":31.45},
+    {"date":"2026-05-10","description":"Rom Casa Hostel Da Nang (2 nights) — 6 Bed Mixed Dorm","category":"Accommodation","currency":"CAD","amountLocal":42.36,"amountCAD":42.36},
+    {"date":"2026-05-12","description":"Saigon Rooftops Hostel (2 nights) — 10 Bed Mixed Dorm Ensuite","category":"Accommodation","currency":"CAD","amountLocal":40.48,"amountCAD":40.48},
+    {"date":"2026-05-14","description":"Sunshine Bedz KL (3 nights) — Deluxe 6 Bed Mixed Dorm","category":"Accommodation","currency":"CAD","amountLocal":47.46,"amountCAD":47.46},
+    {"date":"2026-05-17","description":"The Bohemian Singapore (2 nights) — 10 Bed Mixed Dorm","category":"Accommodation","currency":"CAD","amountLocal":84.52,"amountCAD":84.52}
+  ]
+}

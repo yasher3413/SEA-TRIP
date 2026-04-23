@@ -1,0 +1,8 @@
+[
+  {"route":"Toronto (YYZ) → Taipei (TPE)","date":"2026-04-23","departure":"08:15","arrival":"17:20 +1","airline":"Air Canada AC739 + EVA BR007","ref":"AIIS7C","status":"booked"},
+  {"route":"Taipei (TPE) → Hanoi (HAN)","date":"2026-05-01","departure":"19:00","arrival":"20:55","airline":"VietJet VJ943","ref":"ARP6M7","status":"booked"},
+  {"route":"Hanoi (HAN) → Da Nang (DAD)","date":"2026-05-09","departure":"07:30","arrival":"08:50","airline":"VietJet VJ503","ref":"DAK252","status":"booked"},
+  {"route":"Da Nang (DAD) → HCMC (SGN)","date":"2026-05-13","departure":"08:10","arrival":"09:40","airline":"Bamboo Airways QH151","ref":"FL7SEU","status":"booked"},
+  {"route":"HCMC (SGN) → Kuala Lumpur (KUL)","date":"2026-05-15","departure":"09:00","arrival":"12:35","airline":"VietJet VJ811","ref":"5WVUJW","status":"booked"},
+  {"route":"Singapore (SIN) → Toronto (YYZ)","date":"2026-05-20","departure":"20:35","arrival":"07:00 +1","airline":"United UA28 + UA436","ref":"—","status":"booked"}
+]

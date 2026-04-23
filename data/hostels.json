@@ -1,0 +1,12 @@
+[
+  {"city":"Taipei","checkIn":"2026-04-23","checkOut":"2026-04-27","nights":4,"name":"MEANDER Taipei","bookingLink":"https://www.hostelworld.com","status":"booked"},
+  {"city":"Kaohsiung","checkIn":"2026-04-27","checkOut":"2026-04-30","nights":3,"name":"D'well Hostel","bookingLink":"https://www.hostelworld.com","status":"booked"},
+  {"city":"Hanoi","checkIn":"2026-05-01","checkOut":"2026-05-04","nights":3,"name":"Mad Monkey Hanoi","bookingLink":"https://www.hostelworld.com","status":"booked"},
+  {"city":"Ha Giang","checkIn":"2026-05-04","checkOut":"2026-05-08","nights":4,"name":"Arranged via Easy Rider","bookingLink":null,"status":"via-driver"},
+  {"city":"Hanoi","checkIn":"2026-05-08","checkOut":"2026-05-09","nights":1,"name":"Hanoi Backpackers Hostel & Rooftop Bar","bookingLink":"https://www.hostelworld.com","status":"booked"},
+  {"city":"Hoi An","checkIn":"2026-05-09","checkOut":"2026-05-11","nights":2,"name":"Mad Monkey Hoi An","bookingLink":"https://www.hostelworld.com","status":"booked"},
+  {"city":"Da Nang","checkIn":"2026-05-11","checkOut":"2026-05-13","nights":2,"name":"Rom Casa Hostel Da Nang","bookingLink":"https://www.hostelworld.com","status":"booked"},
+  {"city":"HCMC","checkIn":"2026-05-13","checkOut":"2026-05-15","nights":2,"name":"Saigon Rooftops Hostel","bookingLink":"https://www.hostelworld.com","status":"booked"},
+  {"city":"Kuala Lumpur","checkIn":"2026-05-15","checkOut":"2026-05-18","nights":3,"name":"Sunshine Bedz KL","bookingLink":"https://www.hostelworld.com","status":"booked"},
+  {"city":"Singapore","checkIn":"2026-05-18","checkOut":"2026-05-20","nights":2,"name":"The Bohemian","bookingLink":"https://www.hostelworld.com","status":"booked"}
+]

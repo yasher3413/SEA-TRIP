@@ -1,0 +1,43 @@
+{
+  "clothing": [
+    "3x T-shirts (light, moisture-wicking)",
+    "1x Long-sleeve shirt (temples/cold)",
+    "2x Shorts",
+    "1x Lightweight pants (temples/motorbike)",
+    "1x Swim trunks",
+    "5x Underwear",
+    "3x Socks",
+    "1x Light rain jacket / windbreaker",
+    "1x Flip flops",
+    "1x Runners / trail shoes"
+  ],
+  "toiletries": [
+    "Sunscreen SPF 50+",
+    "DEET mosquito repellent",
+    "Travel towel (microfibre)",
+    "Shampoo / conditioner (small)",
+    "Deodorant",
+    "Toothbrush + toothpaste",
+    "Razor",
+    "Lip balm",
+    "Hand sanitizer",
+    "Wet wipes"
+  ],
+  "health": [
+    "Diarrhea meds (Imodium)",
+    "Electrolyte packets",
+    "Pain relievers (Advil/Tylenol)",
+    "Allergy pills",
+    "Blister pads / bandaids",
+    "Copies of passport + visa docs"
+  ],
+  "tech": [
+    "Phone + charger",
+    "Portable battery bank",
+    "Universal adapter",
+    "Headphones",
+    "Laptop (optional — heavy)",
+    "Padlock (for hostel lockers)",
+    "Dry bag (for Ha Giang rain)"
+  ]
+}

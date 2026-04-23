@@ -1,0 +1,30 @@
+{
+  "gettingAround": [
+    {"where":"Taiwan MRT","tip":"EasyCard — buy at airport. Works on buses too."},
+    {"where":"Vietnam cities","tip":"Grab app (SE Asia Uber). Essential."},
+    {"where":"Ha Giang","tip":"Easy Rider driver — book in Hanoi."},
+    {"where":"Hoi An ↔ Da Nang","tip":"Grab ~30 min, ~$3 USD."},
+    {"where":"Singapore MRT","tip":"EZ-Link card from any station."}
+  ],
+  "money": [
+    {"country":"Taiwan","tip":"TWD. ATMs everywhere. Card friendly."},
+    {"country":"Vietnam","tip":"VND. Cash is king. ATM on arrival."},
+    {"country":"Singapore","tip":"SGD. Very card friendly."},
+    {"country":"Daily budget","tip":"Vietnam ~$25-35 CAD | Taiwan ~$40-50 | SG ~$50-70"},
+    {"country":"Notify bank","tip":"Tell your bank before leaving Canada."}
+  ],
+  "apps": [
+    "Grab (taxis + food delivery)",
+    "Google Maps (offline maps per city)",
+    "Google Translate (Vietnamese + Mandarin offline)",
+    "XE Currency",
+    "Hostelworld"
+  ],
+  "docs": [
+    "Ha Giang Permit — hostel or driver arranges",
+    "Passport valid 6+ months beyond May 2026",
+    "Travel insurance — buy before departure",
+    "Emergency contact stored locally on phone",
+    "Screenshot all booking refs offline"
+  ]
+}
