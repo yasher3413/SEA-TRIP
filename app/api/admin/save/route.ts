@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeDataFile } from "@/lib/github";
-import { cookies } from "next/headers";
 
 export const runtime = "nodejs";
 

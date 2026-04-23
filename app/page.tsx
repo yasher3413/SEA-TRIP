@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import WhereIsYashCard from "@/components/hero/WhereIsYashCard";
+import WeatherWidget from "@/components/hero/WeatherWidget";
 import ChatWindow from "@/components/chat/ChatWindow";
 import { totalSpentCAD } from "@/lib/trip";
 import { formatCAD } from "@/lib/utils";
@@ -20,6 +22,12 @@ export default function HomePage() {
           <p className="text-sm" style={{ color: "var(--muted)" }}>
             29 days · Taiwan 🇹🇼 → Vietnam 🇻🇳 → Malaysia 🇲🇾 → Singapore 🇸🇬
           </p>
+          {/* Live weather — non-blocking, only shown during the trip */}
+          <div className="mt-2 flex justify-center">
+            <Suspense fallback={null}>
+              <WeatherWidget />
+            </Suspense>
+          </div>
         </div>
 
         {/* Live hero widget */}
@@ -49,7 +57,10 @@ export default function HomePage() {
 
         {/* Chatbot section */}
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: "var(--muted)" }}>
+          <h2
+            className="text-sm font-semibold uppercase tracking-wide mb-3"
+            style={{ color: "var(--muted)" }}
+          >
             💬 Ask the Trip Assistant
           </h2>
           <ChatWindow />
