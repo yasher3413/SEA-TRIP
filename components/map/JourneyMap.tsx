@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { CITY_COORDS } from "@/lib/cities";
@@ -33,7 +33,6 @@ function makeIcon(flag: string, color: string, pulse = false) {
     `,
     iconSize: [34, 34],
     iconAnchor: [17, 17],
-    popupAnchor: [0, -20],
   });
 }
 
@@ -129,14 +128,7 @@ export default function JourneyMap({ onSelectCity, todayCity }: Props) {
             position={[city.lat, city.lng]}
             icon={icon}
             eventHandlers={{ click: () => onSelectCity?.(city) }}
-          >
-            <Popup>
-              <div className="text-sm font-medium">{city.flag} {city.name}</div>
-              <div className="text-xs" style={{ color: "#666" }}>
-                Day {city.day} · {city.country}
-              </div>
-            </Popup>
-          </Marker>
+          />
         );
       })}
     </MapContainer>
