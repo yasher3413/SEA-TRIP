@@ -1,18 +1,19 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, CheckCircle, AlertCircle, Loader2, Save } from "lucide-react";
-import expensesData from "@/data/expenses.json";
 import type { ExpensesData, Expense, ExpenseCategory } from "@/lib/types";
 
 const CATEGORIES: ExpenseCategory[] = ["Flight", "Accommodation", "Food", "Transport", "Activity", "Other"];
+
+// ── Root page with auth gate ──────────────────────────────────────────────────
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  async function login(e: React.FormEvent) {
+  async function login(e: React.SyntheticEvent) {
     e.preventDefault();
     const res = await fetch("/api/admin/login", {
       method: "POST",
@@ -28,12 +29,18 @@ export default function AdminPage() {
 
   if (!authed) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--background)" }}>
+      <div
+        className="min-h-screen flex items-center justify-center px-4"
+        style={{ background: "var(--background)" }}
+      >
         <div
           className="w-full max-w-sm rounded-3xl p-8 border shadow-lg"
           style={{ background: "var(--card)", borderColor: "var(--border)" }}
         >
-          <p className="text-2xl text-center mb-1" style={{ fontFamily: "var(--font-accent)", color: "var(--teal)" }}>
+          <p
+            className="text-2xl text-center mb-1"
+            style={{ fontFamily: "var(--font-accent)", color: "var(--teal)" }}
+          >
             🔐 Admin
           </p>
           <p className="text-sm text-center mb-6" style={{ color: "var(--muted)" }}>
@@ -85,10 +92,10 @@ export default function AdminPage() {
   );
 }
 
-// ── Receipt Uploader ─────────────────────────────────────────────────────────
+// ── Receipt Uploader ──────────────────────────────────────────────────────────
 
 function ReceiptUploader() {
-  const [file, setFile] = useState<File | null>(null);
+  const [, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState<Partial<Expense> | null>(null);
@@ -103,12 +110,8 @@ function ReceiptUploader() {
     setError("");
     setSaved(false);
     setExtracted(null);
+    setPreview(URL.createObjectURL(f));
 
-    // Preview
-    const url = URL.createObjectURL(f);
-    setPreview(url);
-
-    // OCR
     setExtracting(true);
     try {
       const fd = new FormData();
@@ -141,31 +144,32 @@ function ReceiptUploader() {
     setError("");
 
     try {
-      // Load current expenses, append new entry
-      const res = await fetch("/api/admin/save", {
+      // Always fetch the live expenses.json first so we never overwrite
+      // expenses that were added after the last Vercel deploy.
+      const loadRes = await fetch("/api/admin/load?file=expenses.json");
+      if (!loadRes.ok) throw new Error("Could not load current expenses");
+      const liveData: ExpensesData = JSON.parse(await loadRes.text());
+
+      const newEntry: Expense = {
+        date: form.date!,
+        description: form.description!,
+        category: form.category ?? "Other",
+        currency: form.currency ?? "CAD",
+        amountLocal: form.amountLocal ?? 0,
+        amountCAD: form.amountCAD ?? 0,
+      };
+
+      const saveRes = await fetch("/api/admin/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           filename: "expenses.json",
-          content: {
-            ...expensesData,
-            log: [
-              ...expensesData.log,
-              {
-                date: form.date,
-                description: form.description,
-                category: form.category ?? "Other",
-                currency: form.currency ?? "CAD",
-                amountLocal: form.amountLocal ?? 0,
-                amountCAD: form.amountCAD ?? 0,
-              },
-            ],
-          },
+          content: { ...liveData, log: [...liveData.log, newEntry] },
           message: `expense: add "${form.description}" on ${form.date}`,
         }),
       });
 
-      if (!res.ok) throw new Error(await res.text());
+      if (!saveRes.ok) throw new Error(await saveRes.text());
       setSaved(true);
       setFile(null);
       setPreview(null);
@@ -188,7 +192,7 @@ function ReceiptUploader() {
       {/* Drop zone */}
       <div
         ref={dropRef}
-        className="rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors hover:border-teal-500"
+        className="rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors"
         style={{ borderColor: "var(--border)" }}
         onClick={() => document.getElementById("receipt-input")?.click()}
         onDragOver={(e) => e.preventDefault()}
@@ -223,30 +227,37 @@ function ReceiptUploader() {
         </div>
       )}
 
-      {/* Preview + form */}
+      {/* Preview + edit form */}
       {extracted && (
         <div className="mt-4 flex flex-col sm:flex-row gap-4">
           {preview && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Receipt preview" className="w-full sm:w-40 rounded-xl object-cover" style={{ maxHeight: 200 }} />
+            <img
+              src={preview}
+              alt="Receipt preview"
+              className="w-full sm:w-40 rounded-xl object-cover"
+              style={{ maxHeight: 200 }}
+            />
           )}
           <div className="flex-1 space-y-3">
-            {[
+            {([
               { label: "Date", key: "date", type: "date" },
               { label: "Description", key: "description", type: "text" },
-              { label: "Amount (local)", key: "amountLocal", type: "number" },
+              { label: "Amount (local currency)", key: "amountLocal", type: "number" },
               { label: "Currency", key: "currency", type: "text" },
               { label: "Amount (CAD)", key: "amountCAD", type: "number" },
-            ].map(({ label, key, type }) => (
+            ] as const).map(({ label, key, type }) => (
               <div key={key}>
-                <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>{label}</label>
+                <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>
+                  {label}
+                </label>
                 <input
                   type={type}
                   value={(form as Record<string, unknown>)[key] as string ?? ""}
                   onChange={(e) =>
                     setForm((f) => ({
                       ...f,
-                      [key]: type === "number" ? parseFloat(e.target.value) : e.target.value,
+                      [key]: type === "number" ? parseFloat(e.target.value) || 0 : e.target.value,
                     }))
                   }
                   className="w-full mt-0.5 px-3 py-2 rounded-xl border text-sm outline-none"
@@ -255,16 +266,21 @@ function ReceiptUploader() {
               </div>
             ))}
 
-            {/* Category select */}
             <div>
-              <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Category</label>
+              <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>
+                Category
+              </label>
               <select
                 value={form.category ?? "Other"}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as ExpenseCategory }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, category: e.target.value as ExpenseCategory }))
+                }
                 className="w-full mt-0.5 px-3 py-2 rounded-xl border text-sm outline-none"
                 style={{ background: "var(--cream)", borderColor: "var(--border)" }}
               >
-                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                {CATEGORIES.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
               </select>
             </div>
 
@@ -295,19 +311,19 @@ function ReceiptUploader() {
   );
 }
 
-// ── Data Editor ──────────────────────────────────────────────────────────────
+// ── Data Editor ───────────────────────────────────────────────────────────────
 
 const EDITABLE_FILES = [
+  "expenses.json",
   "itinerary.json",
   "flights.json",
   "hostels.json",
-  "expenses.json",
   "quickref.json",
   "packing.json",
   "trip-meta.json",
 ] as const;
 
-type EditableFile = typeof EDITABLE_FILES[number];
+type EditableFile = (typeof EDITABLE_FILES)[number];
 
 function DataEditor() {
   const [selectedFile, setSelectedFile] = useState<EditableFile>("expenses.json");
@@ -323,16 +339,23 @@ function DataEditor() {
     setLoading(true);
     setError("");
     setSaved(false);
+    setParseError("");
     try {
       const res = await fetch(`/api/admin/load?file=${filename}`);
-      const text = await res.text();
-      setJsonText(text);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      setJsonText(await res.text());
     } catch (err) {
       setError("Could not load file: " + String(err));
     } finally {
       setLoading(false);
     }
   }
+
+  // Auto-load expenses.json when the editor first mounts
+  useEffect(() => {
+    loadFile("expenses.json");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleTextChange(val: string) {
     setJsonText(val);
@@ -375,7 +398,7 @@ function DataEditor() {
     >
       <h2 className="font-bold text-lg mb-4">✏️ Edit Trip Data</h2>
 
-      {/* File selector */}
+      {/* File tabs */}
       <div className="flex flex-wrap gap-2 mb-4">
         {EDITABLE_FILES.map((f) => (
           <button
@@ -404,17 +427,16 @@ function DataEditor() {
           <textarea
             value={jsonText}
             onChange={(e) => handleTextChange(e.target.value)}
-            rows={16}
+            rows={18}
             className="w-full px-3 py-2 rounded-xl border text-xs font-mono outline-none resize-y"
             style={{
               background: "var(--cream)",
               borderColor: parseError ? "#EF4444" : "var(--border)",
+              color: "var(--foreground)",
             }}
             spellCheck={false}
           />
-          {parseError && (
-            <p className="text-xs text-red-500 mt-1">{parseError}</p>
-          )}
+          {parseError && <p className="text-xs text-red-500 mt-1">{parseError}</p>}
 
           <button
             onClick={saveFile}
