@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send } from "lucide-react";
+import { Send, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ChatMessage } from "@/lib/types";
 import MessageBubble from "./MessageBubble";
@@ -203,11 +203,36 @@ export default function ChatWindow() {
   const lastMsg = messages[messages.length - 1];
   const showTyping = isStreaming && lastMsg?.content === "";
 
+  function clearChat() {
+    if (isStreaming) return;
+    setMessages([]);
+    setInput("");
+  }
+
   return (
     <div
       className="flex flex-col h-[600px] md:h-[660px] rounded-3xl overflow-hidden shadow-lg border"
       style={{ background: "var(--card)", borderColor: "var(--border)" }}
     >
+      {/* Chat header — only shown when there are messages */}
+      {messages.length > 0 && (
+        <div
+          className="flex items-center justify-between px-4 py-2 border-b text-xs"
+          style={{ borderColor: "var(--border)", color: "var(--muted)" }}
+        >
+          <span>{messages.length} message{messages.length !== 1 ? "s" : ""}</span>
+          <button
+            onClick={clearChat}
+            disabled={isStreaming}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-black/5 transition-colors disabled:opacity-40"
+            title="Clear conversation"
+          >
+            <Trash2 size={12} />
+            Clear
+          </button>
+        </div>
+      )}
+
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
