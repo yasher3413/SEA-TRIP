@@ -1,6 +1,6 @@
 [
-  {"city":"Taipei","checkIn":"2026-04-23","checkOut":"2026-04-27","nights":4,"name":"MEANDER Taipei","bookingLink":"https://www.hostelworld.com","status":"booked"},
-  {"city":"Kaohsiung","checkIn":"2026-04-27","checkOut":"2026-04-30","nights":3,"name":"D'well Hostel","bookingLink":"https://www.hostelworld.com","status":"booked"},
+  {"city":"Taipei","checkIn":"2026-04-24","checkOut":"2026-04-28","nights":4,"name":"MEANDER Taipei","bookingLink":"https://www.hostelworld.com","status":"booked"},
+  {"city":"Kaohsiung","checkIn":"2026-04-28","checkOut":"2026-05-01","nights":3,"name":"D'well Hostel","bookingLink":"https://www.hostelworld.com","status":"booked"},
   {"city":"Hanoi","checkIn":"2026-05-01","checkOut":"2026-05-04","nights":3,"name":"Mad Monkey Hanoi","bookingLink":"https://www.hostelworld.com","status":"booked"},
   {"city":"Ha Giang","checkIn":"2026-05-04","checkOut":"2026-05-08","nights":4,"name":"Arranged via Easy Rider","bookingLink":null,"status":"via-driver"},
   {"city":"Hanoi","checkIn":"2026-05-08","checkOut":"2026-05-09","nights":1,"name":"Hanoi Backpackers Hostel & Rooftop Bar","bookingLink":"https://www.hostelworld.com","status":"booked"},
