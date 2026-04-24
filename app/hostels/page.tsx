@@ -47,7 +47,7 @@ export default function HostelsPage() {
                 key={i}
                 className="rounded-2xl p-5 border shadow-sm transition-shadow hover:shadow-md"
                 style={{
-                  background: isActive ? "#F0FDF4" : "var(--card)",
+                  background: isActive ? "var(--active-bg)" : "var(--card)",
                   borderColor: isActive ? "#16A34A" : "var(--border)",
                   borderWidth: isActive ? 2 : 1,
                   opacity: isPast ? 0.72 : 1,

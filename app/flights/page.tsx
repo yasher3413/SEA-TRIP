@@ -33,7 +33,7 @@ export default function FlightsPage() {
                 key={i}
                 className="rounded-2xl p-5 border shadow-sm transition-shadow hover:shadow-md"
                 style={{
-                  background: isToday ? "#FFF7ED" : "var(--card)",
+                  background: isToday ? "var(--today-bg)" : "var(--card)",
                   borderColor: isToday ? "var(--coral)" : "var(--border)",
                   borderWidth: isToday ? 2 : 1,
                   opacity: isPast && !isToday ? 0.7 : 1,
