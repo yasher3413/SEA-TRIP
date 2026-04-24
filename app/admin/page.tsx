@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Upload, CheckCircle, AlertCircle, Loader2, Save } from "lucide-react";
+import { Upload, CheckCircle, AlertCircle, Loader2, Save, RefreshCw, Link2, Copy, Check } from "lucide-react";
+import { usePlaidLink } from "react-plaid-link";
 import type { ExpensesData, Expense, ExpenseCategory } from "@/lib/types";
 
 const CATEGORIES: ExpenseCategory[] = ["Flight", "Accommodation", "Food", "Transport", "Activity", "Other"];
@@ -85,6 +86,7 @@ export default function AdminPage() {
           </p>
         </div>
 
+        <PlaidSync />
         <ReceiptUploader />
         <DataEditor />
       </div>
@@ -460,6 +462,201 @@ function DataEditor() {
           <AlertCircle size={16} className="mt-0.5" /> {error}
         </div>
       )}
+    </section>
+  );
+}
+
+// ── Plaid Bank Sync ───────────────────────────────────────────────────────────
+
+function PlaidLinkButton({
+  onSuccess,
+}: {
+  onSuccess: (accessToken: string) => void;
+}) {
+  const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function createLinkToken() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/plaid/link-token", { method: "POST" });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setLinkToken(json.linkToken);
+    } catch (err) {
+      setError(String(err));
+      setLoading(false);
+    }
+  }
+
+  const { open, ready } = usePlaidLink({
+    token: linkToken ?? "",
+    onSuccess: async (publicToken) => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/plaid/exchange", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ publicToken }),
+        });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        onSuccess(json.accessToken);
+      } catch (err) {
+        setError(String(err));
+      } finally {
+        setLoading(false);
+        setLinkToken(null);
+      }
+    },
+    onExit: () => {
+      setLinkToken(null);
+      setLoading(false);
+    },
+  });
+
+  // Auto-open Plaid Link once the token is ready
+  useEffect(() => {
+    if (linkToken && ready) open();
+  }, [linkToken, ready, open]);
+
+  return (
+    <div>
+      <button
+        onClick={createLinkToken}
+        disabled={loading}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        style={{ background: "var(--teal)" }}
+      >
+        {loading ? <Loader2 size={15} className="animate-spin" /> : <Link2 size={15} />}
+        {loading ? "Opening Plaid…" : "Connect Bank Account"}
+      </button>
+      {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+    </div>
+  );
+}
+
+function PlaidSync() {
+  const [accessToken, setAccessToken] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ imported: number; message?: string } | null>(null);
+  const [error, setError] = useState("");
+
+  async function copyToken() {
+    await navigator.clipboard.writeText(accessToken);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function sync() {
+    setSyncing(true);
+    setError("");
+    setSyncResult(null);
+    try {
+      const res = await fetch("/api/plaid/sync", { method: "POST" });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setSyncResult(json);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <section
+      className="rounded-2xl p-5 border"
+      style={{ background: "var(--card)", borderColor: "var(--border)" }}
+    >
+      <h2 className="font-bold text-lg mb-1">🏦 Bank Sync (Plaid)</h2>
+      <p className="text-xs mb-4" style={{ color: "var(--muted)" }}>
+        Connect your card once, then tap Sync to import new purchases automatically.
+      </p>
+
+      <div className="space-y-4">
+        {/* Step 1 — Connect */}
+        <div
+          className="rounded-xl p-4 border"
+          style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+        >
+          <p className="text-sm font-semibold mb-3">Step 1 — Connect your bank</p>
+          <PlaidLinkButton
+            onSuccess={(token) => {
+              setAccessToken(token);
+              setSyncResult(null);
+              setError("");
+            }}
+          />
+
+          {accessToken && (
+            <div className="mt-4 space-y-2">
+              <p className="text-xs font-medium" style={{ color: "var(--muted)" }}>
+                ✅ Bank linked! Copy your access token and add it as{" "}
+                <code className="px-1 py-0.5 rounded text-xs" style={{ background: "var(--border)" }}>
+                  PLAID_ACCESS_TOKEN
+                </code>{" "}
+                in your Vercel environment variables, then redeploy.
+              </p>
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border font-mono text-xs"
+                style={{ background: "var(--background)", borderColor: "var(--border)" }}
+              >
+                <span className="flex-1 truncate">{accessToken}</span>
+                <button
+                  onClick={copyToken}
+                  className="shrink-0 p-1 rounded hover:bg-black/5"
+                  title="Copy token"
+                >
+                  {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Step 2 — Sync */}
+        <div
+          className="rounded-xl p-4 border"
+          style={{ background: "var(--cream)", borderColor: "var(--border)" }}
+        >
+          <p className="text-sm font-semibold mb-3">Step 2 — Sync transactions</p>
+          <p className="text-xs mb-3" style={{ color: "var(--muted)" }}>
+            Imports all new purchases since your last sync (trip start Apr 23). Auto-categorizes by merchant type.
+            Only settled (non-pending) transactions are imported.
+          </p>
+          <button
+            onClick={sync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: "var(--coral)" }}
+          >
+            {syncing ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <RefreshCw size={15} />
+            )}
+            {syncing ? "Syncing…" : "Sync Now"}
+          </button>
+
+          {syncResult && (
+            <div className="flex items-center gap-2 mt-3 text-sm text-green-600">
+              <CheckCircle size={16} />
+              {syncResult.imported > 0
+                ? `Imported ${syncResult.imported} transaction${syncResult.imported !== 1 ? "s" : ""}! Vercel redeploys in ~60s.`
+                : syncResult.message ?? "Up to date — no new transactions."}
+            </div>
+          )}
+          {error && (
+            <div className="flex items-start gap-2 mt-3 text-sm text-red-500">
+              <AlertCircle size={16} className="shrink-0 mt-0.5" /> {error}
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
