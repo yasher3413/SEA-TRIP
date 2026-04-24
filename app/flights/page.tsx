@@ -1,6 +1,9 @@
+// Revalidate hourly so "flown" vs "upcoming" status stays current
+export const revalidate = 3600;
+
 import { FLIGHTS } from "@/lib/trip";
 import { formatDate } from "@/lib/utils";
-import { Plane, Clock, Hash } from "lucide-react";
+import { Plane } from "lucide-react";
 
 export default function FlightsPage() {
   const today = new Date().toISOString().split("T")[0];
@@ -24,7 +27,6 @@ export default function FlightsPage() {
           {FLIGHTS.map((flight, i) => {
             const isPast = flight.date < today;
             const isToday = flight.date === today;
-            const [from, to] = flight.route.split("→").map((s) => s.trim());
 
             return (
               <div

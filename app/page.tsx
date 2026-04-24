@@ -1,3 +1,6 @@
+// Always server-render so WhereIsYashCard and WeatherWidget get today's real date
+export const dynamic = "force-dynamic";
+
 import { Suspense } from "react";
 import WhereIsYashCard from "@/components/hero/WhereIsYashCard";
 import WeatherWidget from "@/components/hero/WeatherWidget";

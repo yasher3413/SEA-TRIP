@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { CITY_COORDS } from "@/lib/cities";
-import { ITINERARY } from "@/lib/trip";
+import { ITINERARY, getCityForDate } from "@/lib/trip";
 import { formatDate } from "@/lib/utils";
 import type { CityCoord } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,7 +45,10 @@ export default function MapPage() {
             className="flex-1 rounded-2xl overflow-hidden border shadow-sm"
             style={{ borderColor: "var(--border)", minHeight: 480 }}
           >
-            <JourneyMap onSelectCity={setSelected} selectedCity={selected} />
+            <JourneyMap
+              onSelectCity={setSelected}
+              todayCity={getCityForDate(new Date().toISOString().split("T")[0])}
+            />
           </div>
 
           {/* Side panel */}

@@ -1,3 +1,6 @@
+// Revalidate hourly so "active stay" status stays current
+export const revalidate = 3600;
+
 import { HOSTELS } from "@/lib/trip";
 import { formatDate } from "@/lib/utils";
 import { Hotel, Calendar, ExternalLink } from "lucide-react";
